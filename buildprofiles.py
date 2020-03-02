@@ -25,9 +25,7 @@ import sys
 import traceback
 import json
 
-f = open("ExtensionReferences.pkl", "rb")
-ExtensionLinks = pickle.load(f)
-f.close()
+ExtensionLinks = None
 
 output_dir = "../../src/Profiles"
 template_dir = "./templates/nodejs"
@@ -374,7 +372,11 @@ def build_profile(url, name=None, extensions_done=None, headers={"accept": "appl
   return True, structureDef, file_name
 
 def build():
+  global ExtensionLinks
   # Doing this from the html view for now (can I search the FHIR server for specific versions?)
+  f = open("ExtensionReferences.pkl", "rb")
+  ExtensionLinks = pickle.load(f)
+  f.close()
   profiles_done = []
   profiles_todo = []
   headers = {"accept": "text/html"}

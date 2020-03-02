@@ -25,9 +25,7 @@ import pickle
 import sys
 import traceback
 
-f = open("ValueSetReferences.pkl", "rb")
-valuesetLinks = pickle.load(f)
-f.close()
+valuesetLinks = None
 
 output_dir = "../../src/Extensions"
 template_dir = "./templates/nodejs"
@@ -290,6 +288,11 @@ def build_extension(url, name=None, extensions_done=None, headers={"accept": "ap
   return True,extension_def,file_name
 
 def build():
+  global valuesetLinks
+  
+  f = open("ValueSetReferences.pkl", "rb")
+  valuesetLinks = pickle.load(f)
+  f.close()
   # Doing this from the html view for now (can I search the FHIR server for specific versions?)
   extensions_done = {}
   extensions_todo = {}
