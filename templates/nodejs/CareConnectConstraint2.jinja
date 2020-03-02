@@ -1,0 +1,160 @@
+const FHIRServer = require('../..')
+
+let {{ profile.name }} = require(FHIRServer.resources.STU3.{{ profile.name }})
+let Meta = require(FHIRServer.resources.STU3.Meta)
+{% for slice in profile.extensions.slices %}
+{% if slice.extensionPath %}
+let {{ slice.extensionClass }} = require('{{ slice.extensionPath }}')
+{% else %}
+let {{ slice.extensionClass }} = require(FHIRServer.resources.STU3.Extension)
+{% endif %}
+{% endfor %}
+{% for element in profile.nonExtensionElements %}
+{% if element.slices%}
+let {{ element.name|capitalize  }} = require(FHIRServer.resources.STU3.{{ element.name|capitalize  }})
+{% endif %}
+{% endfor %}
+
+class {{ structure.name | replace ("-","")}} extends {{ profile.name }} {
+  constructor (opt) {
+    super(opt)
+    if (opt) {
+      delete opt.resourceType // resourceType is read only on super
+      this.manufacture = false // Don't ake empty objects if we don't ahve them
+    } else {
+      this.manufacture = true // We're an empty "factory" object
+    }
+    Object.assign(this, opt)
+    this.meta = new Meta()
+    this.meta.profile = '{{ structure.url }}'
+  }
+
+  addExtension (extension) {
+    if (this.extension) {
+      this.__data.extension.unshift(extension)
+    } else {
+      this.__data.extension = [extension]
+    }
+  }
+
+  addReplaceExtension (extension) {
+    if (this.extension) {
+      const index = this.extension.findIndex(ext => ext.url === extension.url)
+      if (index === -1) {
+        this.__data.extension.unshift(extension)
+      } else {
+        this.__data.extension[index] = extension
+      }
+    } else {
+      this.__data.extension = [extension]
+    }
+  }
+
+  {% for slice in profile.extensions.slices %}
+  set {{ slice.sliceName }} (value) {
+    if (value.url !== '{{ slice.profile }}') {
+      throw new Error('Incorrect profile URL for {{ slice.sliceName }}')
+    }
+    if (!(value instanceof {{ slice.extensionClass }})) {
+      value = new {{ slice.extensionClass }}(value.toJSON())
+    }
+    {% if slice.max == '1' %}
+    this.addReplaceExtension(value)
+    {% else %}
+    this.addExtension(value)
+    {% endif %}
+  }
+
+  get {{ slice.sliceName }} () {
+    {% if slice.max == '1' %}
+    let ext = this.extension && this.extension.find(ext => ext.url === '{{ slice.profile }}')
+    if (ext) {
+      // if this got built from a generic object - take the chance to set it up 'correctly'
+      if (!(ext instanceof {{ slice.extensionClass }})) {
+        ext = new {{ slice.extensionClass }}(ext.toJSON())
+        this.{{ slice.sliceName }} = ext
+      }
+    }
+    {% else %}
+    let ext = this.extension && this.extension.filter(ext => ext.url === '{{ slice.profile }}')
+    if (ext && ext.length > 0) {
+      // if these got built from a generic object - take the chance to set it up 'correctly'
+      ext.forEach(function (element) {
+        if (!(element instanceof {{ slice.extensionClass }})) {
+          var index = this.__data.extension.indexOf(element)
+          this.__data.extension[index] = new {{ slice.extensionClass }}(element.toJSON())
+        }
+      }, this)
+    }
+    {% endif %}
+    let retObject = this.extension && this.extension.filter(ext => ext.url === '{{ slice.profile }}')
+    if ((!retObject || retObject.length === 0) && this.manufacture) {
+      retObject = new {{ slice.extensionClass }}()
+      this.{{ slice.sliceName }} = retObject
+      return [retObject]
+    }
+    return retObject
+  }
+  {% endfor %}
+
+  {% for element in profile.nonExtensionElements %}
+    {% for slice in element.slices  %}
+  get {{ slice.name }}{{ element.name|capitalize  }} () {
+    let retObject = this.{{element.name}} && this.{{element.name}}.find(obj => obj.{{ element.discriminator.path }} === '{{ element.discriminatorFixedValueFunc(slice.name) }}')
+    if ((!retObject || retObject.length === 0) && this.manufacture) {
+      retObject = new {{element.name|capitalize}}()
+      retObject.{{ element.discriminator.path }} = '{{ element.discriminatorFixedValueFunc(slice.name) }}'
+      this.{{ slice.name }}{{ element.name|capitalize  }} = retObject
+    }
+    return this.{{element.name}} && this.{{element.name}}.find(obj => obj.{{ element.discriminator.path }} === '{{ element.discriminatorFixedValueFunc(slice.name) }}')
+  }
+  set {{ slice.name }}{{ element.name|capitalize  }} (value) {
+    let v = new {{element.name|capitalize}}(value)
+    v.{{ element.discriminator.path }} = '{{ element.discriminatorFixedValueFunc(slice.name) }}'
+    if (this.{{element.name}}) {
+      const nnn = this.{{element.name}}.findIndex(obj => obj.{{ element.discriminator.path }} === '{{ element.discriminatorFixedValueFunc(slice.name) }}')
+      if (nnn === -1) {
+        this.{{element.name}}.unshift(v)
+      } else {
+        this.{{element.name}}[nnn] = v
+      }
+    } else {
+      this.{{element.name}} = v
+    }
+  }
+    {% endfor %}
+  {% if element.slices|length > 0 %}
+  get other{{ element.name|capitalize  }} () {
+    let retObject = this.{{element.name}} &&
+      this.{{element.name}}.filter(obj => obj.{{ element.discriminator.path }} !== '{{ element.discriminatorFixedValueFunc(element.slices[0].name) }}')
+    {% for slice in element.slices[1:] %}
+    retObject = retObject &&
+      retObject.filter(obj => obj.{{ element.discriminator.path }} !== '{{ element.discriminatorFixedValueFunc(slice.name) }}')
+    {% endfor %}
+    if ((!retObject || retObject.length === 0) && this.manufacture) {
+      retObject = new {{element.name|capitalize}}()
+      this.other{{ element.name|capitalize  }} = retObject
+      return [retObject]
+    }
+    return retObject
+  }
+
+  set other{{ element.name|capitalize  }} (newValue) {
+    {% for slice in element.slices  %}
+    const existing{{ slice.name|capitalize }}{{ element.name|capitalize }} = this.{{ slice.name }}{{ element.name|capitalize }}
+    {% endfor %}
+    this.{{element.name}} = Array.isArray(newValue)
+      ? newValue.map(val => new {{element.name|capitalize}}(val))
+      : [new {{element.name|capitalize}}(newValue)]
+    {% for slice in element.slices  %}
+    if (existing{{ slice.name|capitalize }}{{ element.name|capitalize }}) {
+      this.{{ slice.name }}{{ element.name|capitalize }} = existing{{ slice.name|capitalize }}{{ element.name|capitalize }}
+    }
+    {% endfor %}
+  }
+  {% endif %}
+  {% endfor %}
+}
+
+module.exports = {{ structure.name | replace ("-","")}}
+

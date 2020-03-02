@@ -1,0 +1,62 @@
+// This file was auto generated
+
+const valueSet = require('../{{ filename }}')
+
+describe('Care Connect Valueset {{ classname }}', function () {
+  describe('validateCode function', function () {
+    it('system is invalid', function () {
+      let result = valueSet.validateCode('foobar', 'foo', 'bar')
+      {% if needs_snomed %}
+      expect(result).toBe(undefined)
+      {% else %}
+      let resultBool = result.parameter.find(prm => prm.name === 'result').valueBoolean
+      let resultMessage = result.parameter.find(prm => prm.name === 'message').valueString
+      expect(resultBool).toBe(false)
+      expect(resultMessage).toBe('System not part of valueset')
+      {% endif %}
+    })
+    it('code is invalid', function () {
+      let result = valueSet.validateCode('{{ system }}', 'foo', 'bar')
+      {% if needs_snomed %}
+      expect(result).toBe(undefined)
+      {% else %}
+      let resultBool = result.parameter.find(prm => prm.name === 'result').valueBoolean
+      expect(resultBool).toBe(false)
+      {% endif %}
+    })
+    it('code is valid, display is invalid', function () {
+      let result = valueSet.validateCode('{{ system }}', '{{ valid_code }}', 'bar')
+      {% if needs_snomed %}
+      expect(result).toBe(undefined)
+      {% else %}
+      let resultBool = result.parameter.find(prm => prm.name === 'result').valueBoolean
+      let resultDisplay = result.parameter.find(prm => prm.name === 'display').valueString
+      {% if valid_display is not none %}
+      expect(resultBool).toBe(false)
+      expect(resultDisplay).toBe('{{ valid_display|replace("'","\\'") }}')
+      {% else %}
+      expect(resultBool).toBe(true)
+      expect(resultDisplay).toBe(undefined)
+      {% endif %}
+      {% endif %}
+    })
+    it('code and display are valid', function () {
+      let result = valueSet.validateCode('{{ system }}', '{{ valid_code }}', '{{ valid_display|replace("'","\\'") }}')
+      {% if needs_snomed %}
+      expect(result).toBe(undefined)
+      {% else %}
+      let resultBool = result.parameter.find(prm => prm.name === 'result').valueBoolean
+      let resultDisplay = result.parameter.find(prm => prm.name === 'display').valueString
+      expect(resultBool).toBe(true)
+      {% if valid_display is not none %}
+      expect(resultDisplay).toBe('{{ valid_display|replace("'","\\'") }}')
+      {% else %}
+      expect(resultDisplay).toBe(undefined)
+      {% endif %}
+      {% endif %}
+    })
+  })
+  describe('expand function', function () {
+  })
+})
+
