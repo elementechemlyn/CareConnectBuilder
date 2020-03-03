@@ -13,6 +13,20 @@ In theory it could also be run on a level 3 differential to subclass level 2 cla
 Templates are included to produce nodeJS classes that are subclasses of the classes from 
 the https://github.com/Asymmetrik/node-fhir-server-core project.
 
+## Current Status ##
+A build is attempted for all STU3 Codesets, Valuesets, Extensions and Profiles listed at:
+
+https://fhir.hl7.org.uk/
+
+are included except:
+* Profiles/Extensions which use slices without a discriminator
+* Profiles/Extensions which use slices with non-fixed value discriminators
+
+The script will throw a RuntimeError if it encounters something known to be unsupported.
+
+Codesets, Valuesets and Extensions have corresponding test suites built (see the templates) but the profile test
+suites are manually built.
+
 ## Building the classes ##
 Copy config.ini.sample to config.ini and adjust to point to your chosen output directory.
 
@@ -24,6 +38,71 @@ Then ...
 pip install -r requirements.txt
 python buildall.py
 ```
+
+## The NodeJS Classes ##
+### Profiles
+The classes will automatically set the correct profile urls and provide helper functions to deal with CareConnect specific extensions and slices.
+
+Classes provide named slice functions where possible. e.g The CareConnectPatient1 class provides two
+functions for adding and retrieving  Identifiers:
+
+  * `nhsNumberIdentifier` which will return any identifer with the NHS Number system.
+  * `otherIdentifier` which will return any identifer without the NHS Number system.
+
+The profile classes can be constructed in two different ways:
+
+  * With a FHIR JSON resource.
+  When constructed with a FHIR resource the objects are by default in "read only" mode. Calling a
+  getter for a Care Connect specific extension will only return an object if it was included in
+  the FHIR JSON.
+
+  * As an empty resource. 
+  When constructed empty the objects are a by default in "manufacture mode". Calling a getter for a 
+  Care Connect specific extension will create a new instance of the extension e.g.
+
+  `patient.ethnicCategory`
+
+  will create an instance of the ExtensionCareConnectEthnicCategory1 class and add it to the 
+  list of extensions in the patient object. A list is returned even when the maximum cardinality of 
+  the extension is 1 (because the getter filters the list of extensions to include only enthnic category extensions).
+  
+  The classes will attempt to honour cardinality for extensions and replace an existing 
+  extension of the same type if it already exists and the maximum cardinality is one.
+
+### Extensions
+The Extension classes set the correct url and provide helper functions for CareConnect specific extentions and slices. For example the ExtensionCareConnectEncounterTrasport1 class provides:
+
+  * A reasonForTransport getter/setter to get/set the reasonForTransport extension
+
+The classes also provide functions to set the relevant value property of an extension. For example
+the ExtensionCareConnectEthnicCategory1 provides:
+
+  * A getter\setter called `codeableConcept` to set the valueCodeableConcept value of the extension.
+
+A named slice in an extension gets a specific getter/setter. For example ExtensionCareConnectNHSCommunication1
+provides:
+
+  * A getter\setter called `preferred` to set the valueBoolean
+
+N.B At this stage, unlike the Profile classes, Extension classes will not automatically build components of 
+the right type. They must be expclitly created and set.
+
+### Valuesets
+Where a valueset uses a single codesystem that is included in the classes then the display and system 
+values are automatically added. e.g.
+
+`patient.ethnicCategory[0].codeableConcept = 'A'`
+
+Will also set the system and display value ('British, Mixed British' in this example)
+
+
+Values from sets that use Snomed or multiple Codesystems must be specified fully. e.g.
+
+```
+patient.religiousAffiliation.codeableConcept = {
+        'system': 'http://snomed.info/sct', 'code': '428506007', 'display': 'Druid, follower of religion' }
+```
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details of the process for submitting pull requests to us.
