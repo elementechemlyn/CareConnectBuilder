@@ -14,7 +14,7 @@ Templates are included to produce nodeJS classes that are subclasses of the clas
 the https://github.com/Asymmetrik/node-fhir-server-core project.
 
 ## Building the classes ##
-Adjust config.ini to point to your chosen output directory.
+Copy config.ini.sample to config.inin and adjust to point to your chosen output directory.
 
 If you wish to use a different set of templates - adjust the template_dir too.
 
