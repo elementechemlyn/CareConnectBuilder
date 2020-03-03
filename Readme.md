@@ -18,6 +18,7 @@ Adjust config.ini to point to your chosen output directory.
 
 If you wish to use a different set of templates - adjust the template_dir too.
 
+If you wish to change the Base Classes add your own to the BaseClasses directory under the templates directory
 Then ...
 ```
 pip install -r requirements.txt
