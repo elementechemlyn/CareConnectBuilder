@@ -1,6 +1,7 @@
 import configparser
 import os.path
 import os
+import shutil
 
 import buildcodesystem
 import buildvalueset
@@ -40,3 +41,13 @@ buildprofiles.template_dir = template_dir
 buildvalueset.build()
 buildextensions.build()
 buildprofiles.build()
+
+#Copy the base classes over to the output folder.
+base_class_dir = os.path.join(template_dir,'BaseClasses')
+base_class_output_dir = os.path.join(output_dir,'BaseClasses')
+os.makedirs(base_class_output_dir, exist_ok=True)
+for name in os.listdir(base_class_dir):
+  full_src_name = os.path.join(base_class_dir,name)
+  full_target_name = os.path.join(base_class_output_dir,name) 
+  print("Copying %s to %s" % (full_src_name,full_target_name))
+  shutil.copyfile(full_src_name,full_target_name)

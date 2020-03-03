@@ -3,7 +3,7 @@
 {% for code_system_include in code_system_includes %}
 const {{ code_system_include[0] }}CodeSystem = require('{{ code_system_include[1] }}')
 {% endfor %}
-const CareConnectBaseValueSet = require('../BaseObjects/CareConnect-BaseValueSet')
+const CareConnectBaseValueSet = require('../BaseClasses/CareConnect-BaseValueSet')
 let vsJsn = {{ js_object|replace("True", "true")|replace("False","false") }}
 const {{ classname }} = new CareConnectBaseValueSet(vsJsn)
 {{ classname }}.code_systems = []
